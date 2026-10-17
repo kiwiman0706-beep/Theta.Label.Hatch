@@ -1,0 +1,19 @@
+# 署名鍵・パスワード・ビルド生成物は絶対にコミットしない（公開リポジトリ）
+**/*.jks
+**/*.keystore
+**/*.p12
+**/*.pfx
+**/SIGNING.txt
+**/signing/
+**/.env
+**/.env.*
+**/dist/
+**/.build/
+**/build/
+**/.gradle/
+**/local.properties
+# KING JIM TEPRA-Print SDK は使用許諾上ソースとして再配布しない
+**/app/libs/TepraPrint.jar
+**/jniLibs/*/libTepraPrint.so
+# 鍵入りの更新キットZIP
+*update-kit*.zip

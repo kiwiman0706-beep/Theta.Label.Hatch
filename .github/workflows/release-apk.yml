@@ -1,0 +1,69 @@
+name: release-apk
+
+# Publishes an already-signed APK from releases/ as a GitHub Release.
+# The signing key is NOT in this public repository (see docs/08_SIGNING_KEY_POLICY.md),
+# so CI never signs anything: it only verifies that the committed APK is signed by
+# the same certificate as the distributed app, then attaches it.
+#
+#   1. Push a tag like v1.0.0, or
+#   2. Run this workflow manually with a `version` input (the tag is created).
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Tag to create & release (e.g. v1.0.0)'
+        required: true
+        default: v1.0.0
+
+permissions:
+  contents: write
+
+env:
+  RELEASE_TAG: ${{ github.event.inputs.version || github.ref_name }}
+  # Distribution certificate of jp.yaegaki.tepravoice (docs/handoff/IMPLEMENTATION_STATUS.md).
+  # A mismatch means the APK would not install over the existing app — fail loudly.
+  EXPECTED_CERT_SHA256: 61256bf31586fd7c266a11c0de663c515fbbdb0667970ad833e62c14f8ce2c79
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Locate APK
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+          APK="releases/koe-de-tepra-${VERSION}.apk"
+          [ -f "$APK" ] || { echo "::error::$APK not found"; exit 1; }
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "APK=$APK" >> "$GITHUB_ENV"
+
+      - name: Verify signature and certificate
+        run: |
+          BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
+          "$BT/apksigner" verify --verbose --print-certs "$APK" | tee verify.txt
+          grep -qi "certificate SHA-256 digest: $EXPECTED_CERT_SHA256" verify.txt \
+            || { echo "::error::Signing certificate differs from the distributed app"; exit 1; }
+          "$BT/aapt2" dump badging "$APK" | head -1 | tee badging.txt
+          grep -q "name='jp.yaegaki.tepravoice'" badging.txt \
+            || { echo "::error::Unexpected package name"; exit 1; }
+          grep -q "versionName='$VERSION'" badging.txt \
+            || { echo "::error::APK versionName does not match tag $RELEASE_TAG"; exit 1; }
+
+      - name: Checksums
+        run: sha256sum "$APK" | sed 's#releases/##' > SHA256SUMS-release.txt
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          target_commitish: ${{ github.sha }}
+          name: 声でテプラ ${{ env.VERSION }}（Theta.Label.Hatch）
+          body_path: docs/release-notes/${{ env.RELEASE_TAG }}.md
+          prerelease: ${{ contains(env.RELEASE_TAG, '-') }}
+          files: |
+            ${{ env.APK }}
+            SHA256SUMS-release.txt

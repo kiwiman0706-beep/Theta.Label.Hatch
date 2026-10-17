@@ -1,0 +1,2 @@
+2497668a10dee6d630c678b277d77d8b2cd5b7e4ebf56a9bc9dd3d8f3b2b368e  koe-de-tepra-1.0.0.apk
+482b601d245829846f766a4f43e97da878122bf1d2efc2188d060ba7ce05929a  koe-de-tepra-update-kit-1.0.0.zip

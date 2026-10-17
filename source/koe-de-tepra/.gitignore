@@ -1,0 +1,5 @@
+/dist/
+/release-signing.jks
+/app/libs/TepraPrint.jar
+/app/src/main/jniLibs/*/libTepraPrint.so
+/.build/
